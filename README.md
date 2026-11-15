@@ -78,3 +78,6 @@ To change a sound, replace the file in `music/` or update the path in `src/sound
 - Page images: NASA (individual credits are shown in the site footer)
 - Background track: made by the team (`music/nasa-hackathon-audio-main.mp3`, a stereo mix of the original 5.1 WAV)
 - Check the license of each sound in `music/` before publishing
+
+
+Note: SI is used by the team to develop the data preprocessing pipelines, the frontend as well as the full software.

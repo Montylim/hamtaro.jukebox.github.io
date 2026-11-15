@@ -8,75 +8,6 @@
   text-align: left;
 }
 
-/* Top header */
-.top-header {
-  --header-image: url("/image%20pack/iss070e000820orig-nasa.webp");
-  background-color: #202B3A;
-  background-image:
-    linear-gradient(to bottom, transparent 72%, var(--section-seam) 100%),
-    linear-gradient(rgba(7, 18, 33, 0.68), rgba(7, 18, 33, 0.72)),
-    var(--header-image);
-  background-position: center top, center, calc(50% + 50px) top;
-  background-size: 100% 100%, 100% 100%, cover;
-  color: #FFFFFF;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 16px;
-  padding: 16px 40px 36px;
-  min-height: 85px;
-  position: relative;
-}
-
-[data-theme="light"] .top-header {
-  --header-image: url("/image%20pack/space-view-nyc-55534901810-95d2f06788-o-jessica.webp");
-}
-
-/* Logo and website name */
-.brand-section {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-}
-
-.brand-text {
-  min-width: 0;
-}
-
-/* Logo */
-.website-logo {
-  width: 65px;
-  height: 65px;
-  object-fit: contain;
-  flex: 0 0 auto;
-}
-
-/* Website name */
-.brand-text h1 {
-  font-size: 1.3rem;
-  margin: 0;
-  color: inherit;
-  letter-spacing: normal;
-}
-
-.brand-text p {
-  font-size: 1rem;
-  margin: 5px 0 0;
-  color: #DCE5EF;
-}
-
-.image-credit {
-  font-size: 12px;
-  line-height: 1.4;
-  text-align: right;
-}
-
-.image-credit a {
-  color: inherit;
-  text-underline-offset: 0.15em;
-}
-
 /* Main content */
 .main-content {
   display: flex;
@@ -85,21 +16,7 @@
   width: 100%;
   box-sizing: border-box;
   padding: 20px clamp(20px, 4vw, 64px) 40px;
-  background-image:
-    linear-gradient(to bottom, var(--section-seam) 0, transparent 180px),
-    linear-gradient(rgba(18, 18, 18, 0.64), rgba(18, 18, 18, 0.78)),
-    url("/image%20pack/s84-27018orig-nasa.webp");
   background-color: var(--background);
-  background-position: center top, center, center;
-  background-repeat: no-repeat;
-  background-size: 100% 100%, cover, cover;
-}
-
-[data-theme="light"] .main-content {
-  background-image:
-    linear-gradient(to bottom, var(--section-seam) 0, transparent 180px),
-    linear-gradient(rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0.8)),
-    url("/image%20pack/1-pia26728-fig-a-curiosity-captures-dawn-breaking-on-wind-carved-cliffs-nasa.webp");
 }
 
 .main-intro {
@@ -291,23 +208,6 @@
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
-}
-
-.image-credits {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-  margin-top: auto;
-  padding-top: 32px;
-  border-top: 1px solid rgba(127, 127, 127, 0.45);
-}
-
-.image-credits p {
-  margin: 0;
-  padding: 4px 8px;
-  background-color: var(--surface);
-  border-radius: 4px;
 }
 
 .video-player {
@@ -658,6 +558,7 @@
 
 /* soundscape mixer */
 .soundscape-mixer {
+  container: mixer / inline-size; /* strips and tooltips adapt to the panel's own width */
   margin-top: 12px;
   text-align: left;
 }
@@ -691,13 +592,8 @@
   gap: 8px;
 }
 
-@media (max-width: 560px) {
-  .soundscape-strips {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 .soundscape-strip {
+  position: relative; /* tooltips anchor to the strip's edges */
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -712,29 +608,26 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 6px;
-  min-height: 2.6em; /* keeps sliders lined up when a name wraps */
+  min-height: 1.5em;
 }
 
 .soundscape-strip label {
+  min-width: 0;
   font-size: 0.85em;
   font-weight: 600;
   line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .soundscape-title-row {
-  position: relative; /* heading tooltip lines up with the heading, not the icon */
+  position: relative; /* heading tooltip lines up with the heading */
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.soundscape-title-row .info-tip {
-  position: static;
-}
-
 /* info icon with a tooltip that appears on hover, keyboard focus or tap */
 .info-tip {
-  position: relative;
   display: inline-flex;
   flex: 0 0 auto;
 }
@@ -754,12 +647,13 @@
 }
 
 .info-tip-text {
+  --tip-x: 0;
   position: absolute;
   z-index: 10;
   bottom: calc(100% + 8px);
-  left: 50%;
+  left: 0;
   width: max-content;
-  max-width: 230px;
+  max-width: min(230px, calc(100cqw - 16px));
   padding: 8px 10px;
   color: var(--text);
   background-color: var(--surface);
@@ -772,8 +666,8 @@
   text-align: left;
   opacity: 0;
   visibility: hidden;
-  transform: translateX(-50%) translateY(4px);
-  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+  translate: var(--tip-x) 4px;
+  transition: opacity 0.15s ease, translate 0.15s ease, visibility 0.15s;
   pointer-events: none;
 }
 
@@ -781,67 +675,77 @@
 .info-tip:focus-within .info-tip-text {
   opacity: 1;
   visibility: visible;
-  transform: translateX(-50%) translateY(0);
+  translate: var(--tip-x) 0;
 }
 
-/* keep tooltips at the panel edges from spilling out */
-.soundscape-title-row .info-tip-text {
-  left: 0;
-  max-width: min(260px, calc(100vw - 48px));
-  transform: translateY(4px);
+/* Tooltip alignment per column: left column opens rightwards, right column
+   opens leftwards, middle columns centre on the strip. */
+.soundscape-strip .info-tip-text {
+  left: 50%;
+  --tip-x: -50%;
 }
 
 .soundscape-strip:first-child .info-tip-text {
-  left: -8px;
-  transform: translateY(4px);
+  left: 0;
+  --tip-x: 0;
 }
 
 .soundscape-strip:last-child .info-tip-text {
   left: auto;
-  right: -8px;
-  transform: translateY(4px);
+  right: 0;
+  --tip-x: 0;
 }
 
-/* two-column mixer on phones: left column opens right, right column opens left */
-@media (max-width: 560px) {
-  /* anchor tooltips to the strip's outer edge rather than the icon */
-  .soundscape-strip {
-    position: relative;
+/* narrower panel: three columns */
+@container mixer (max-width: 680px) {
+  .soundscape-strips {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .soundscape-strip .info-tip {
-    position: static;
+  .soundscape-strip:nth-child(3n + 1) .info-tip-text {
+    left: 0;
+    right: auto;
+    --tip-x: 0;
   }
 
-  .soundscape-strip .info-tip-text {
-    max-width: min(230px, calc(100vw - 48px));
+  .soundscape-strip:nth-child(3n + 2) .info-tip-text {
+    left: 50%;
+    right: auto;
+    --tip-x: -50%;
+  }
+
+  .soundscape-strip:nth-child(3n) .info-tip-text {
+    left: auto;
+    right: 0;
+    --tip-x: 0;
+  }
+}
+
+/* heading and readout stack when the panel is narrow */
+@container mixer (max-width: 520px) {
+  .soundscape-mixer-heading {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+}
+
+/* narrowest panel (phones): two columns */
+@container mixer (max-width: 400px) {
+  .soundscape-strips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .soundscape-strip:nth-child(odd) .info-tip-text {
     left: 0;
     right: auto;
-    transform: translateY(4px);
+    --tip-x: 0;
   }
 
   .soundscape-strip:nth-child(even) .info-tip-text {
     left: auto;
     right: 0;
-    transform: translateY(4px);
+    --tip-x: 0;
   }
-
-  .soundscape-strip .info-tip:hover .info-tip-text,
-  .soundscape-strip .info-tip:focus-within .info-tip-text {
-    transform: translateY(0);
-  }
-}
-
-.soundscape-title-row .info-tip:hover .info-tip-text,
-.soundscape-title-row .info-tip:focus-within .info-tip-text,
-.soundscape-strip:first-child .info-tip:hover .info-tip-text,
-.soundscape-strip:first-child .info-tip:focus-within .info-tip-text,
-.soundscape-strip:last-child .info-tip:hover .info-tip-text,
-.soundscape-strip:last-child .info-tip:focus-within .info-tip-text {
-  transform: translateY(0);
 }
 
 .soundscape-strip input[type="range"] {
@@ -873,11 +777,6 @@
 
 /* Mobile layout */
 @media (max-width: 700px) {
-  .soundscape-mixer-heading {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-  }
-
   .video-layout {
     grid-template-columns: minmax(0, 1fr);
     gap: 8px;
@@ -885,27 +784,6 @@
 }
 
 @media (max-width: 600px) {
-  .top-header {
-    padding: 16px 20px 36px;
-  }
-
-  .brand-section {
-    gap: 12px;
-  }
-
-  .website-logo {
-    width: 50px;
-    height: 50px;
-  }
-
-  .brand-text h1 {
-    font-size: 1.1rem;
-  }
-
-  .brand-text p {
-    font-size: 1rem;
-  }
-
   .main-content {
     padding: 20px 20px 24px;
   }

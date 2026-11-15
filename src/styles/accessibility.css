@@ -4,7 +4,6 @@
   --text: #171717;
   --surface: #EEEEEE;
   --accent: #004C99;
-  --section-seam: #F2F0DC;
 }
 
 /* dark theme */
@@ -13,15 +12,6 @@
   --text: #FFFFFF;
   --surface: #242424;
   --accent: #90CAF9;
-  --section-seam: #121212;
-}
-
-[data-theme="dark"] .top-header {
-  background-color: #101010;
-}
-
-[data-theme="light"] .top-header {
-  background-color: #202B3A;
 }
 
 /* Keep the selectable text sizes readable while allowing browser zoom. */

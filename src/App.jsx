@@ -17,24 +17,6 @@ function App(){
   const welcomeDialogRef = useRef(null)
   const videoRef = useRef(null)
   const [engine] = useState(() => new SoundscapeEngine())
-  const headerImageSource = theme === 'light'
-    ? {
-        label: 'NASA/Jessica Meir, ISS075-E-0102764',
-        href: 'https://www.flickr.com/photos/nasa2explore/55534901810/',
-      }
-    : {
-        label: 'NASA/JSC, ISS070-E-000820',
-        href: 'https://images.nasa.gov/details/iss070e000820',
-      }
-  const mainImageSource = theme === 'light'
-    ? {
-        label: 'NASA/JPL-Caltech, PIA26728',
-        href: 'https://science.nasa.gov/photojournal/',
-      }
-    : {
-        label: 'NASA/JSC, S84-27018',
-        href: 'https://images.nasa.gov/details/S84-27018',
-      }
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -136,17 +118,8 @@ function App(){
         </div>
       </dialog>
 
-      <header className="top-header">
-        
-        {/* Jukebox header */}
-        <div className="brand-section">
-          <img src="/image%20pack/nasa-logo.png" alt="NASA Logo" className="website-logo" />
-            <div className="brand-text">
-              <h1>NASA Earth Information Jukebox</h1> {/* title */}
-              <p>Explore the forces and intensity of nature through music</p> {/* subtitle */}
-            </div> 
-        </div>
-      </header>
+      {/* page title for screen readers (the visible header was removed) */}
+      <h1 className="visually-hidden">Earth Information Jukebox</h1>
 
       <main className="main-content">
         <div className="main-intro">
@@ -220,7 +193,7 @@ function App(){
 
           {/* title and subtitle */}
           <div className="title-block">
-            <p className="title-eyebrow">NASA Ocean Visualization</p>
+            <p className="title-eyebrow">Ocean Visualization</p>
             <h2 id="video-title" className="main-title">Global Ocean Surface Currents and Temperature</h2>
           </div>
         </div>
@@ -354,22 +327,6 @@ function App(){
           </aside>
         </div>
 
-
-        {/* image credits */}
-        <footer className="image-credits" aria-label="Image credits">
-          <p className="image-credit">
-            Header image:{' '}
-            <a href={headerImageSource.href} target="_blank" rel="noreferrer">
-              {headerImageSource.label}
-            </a>
-          </p>
-          <p className="image-credit">
-            Main background:{' '}
-            <a href={mainImageSource.href} target="_blank" rel="noreferrer">
-              {mainImageSource.label}
-            </a>
-          </p>
-        </footer>
       </main>
 
     </div>
