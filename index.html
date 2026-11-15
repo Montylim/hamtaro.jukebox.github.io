@@ -20,7 +20,7 @@
     const readout = document.getElementById('readout');
 
     // Load precomputed 3D FFT musical grid
-    fetch('output/ocean_sonification.json').then(r => r.json()).then(d => gridData = d);
+    fetch('http://127.0.0.1:8000/output/ocean_sonification.json').then(r => r.json()).then(d => gridData = d);
 
     // Initialize Web Audio synthesizers on first user interaction
     function initAudio() {
