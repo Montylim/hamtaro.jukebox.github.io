@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
 
 app.mount("/output", StaticFiles(directory = "output"), name="static")
+app.mount("/music", StaticFiles(directory = "music"), name="music")
 
 origins = ["*"]
 

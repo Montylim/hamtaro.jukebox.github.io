@@ -224,3 +224,4 @@ __marimo__/
 datasets/
 vectors/
 .ipynb_checkpoints/
+.claude/

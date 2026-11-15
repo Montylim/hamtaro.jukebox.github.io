@@ -4,70 +4,249 @@
   <meta charset="UTF-8">
   <title>Ocean Current Sonification</title>
   <style>
-    body { background: #0f172a; color: #f8fafc; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
-    video { width: 640px; height: 640px; border: 2px solid #38bdf8; cursor: crosshair; }
-    #readout { margin-top: 12px; font-size: 1.1rem; color: #38bdf8; }
+    body { background: #0f172a; color: #f8fafc; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; margin: 0 16px 32px; }
+    video { width: 50%; min-width: 320px; border: 2px solid #38bdf8; cursor: crosshair; }
+    #readout { margin: 12px 0; font-size: 1rem; color: #38bdf8; min-height: 1.3em; text-align: center; }
+    #mixer { display: grid; grid-template-columns: repeat(5, minmax(110px, 1fr)); gap: 12px; width: min(760px, 100%); }
+    .strip { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+    .strip h4 { margin: 0; font-size: 0.9rem; }
+    .strip small { color: #94a3b8; font-size: 0.75rem; min-height: 2.2em; }
+    .strip input { width: 100%; accent-color: #38bdf8; }
+    .meter { height: 8px; background: #0f172a; border-radius: 4px; overflow: hidden; }
+    .meter div { height: 100%; width: 0%; background: #38bdf8; transition: width 0.1s linear; }
+    .val { font-variant-numeric: tabular-nums; font-size: 0.75rem; color: #cbd5e1; }
+    @media (max-width: 640px) { #mixer { grid-template-columns: repeat(2, 1fr); } }
   </style>
 </head>
 <body>
-  <h2>Hover over the Ocean Currents to Play Music</h2>
-  <video id="vid" src="datasets/flat_global_ecco2_6840x3420_768p30-a2.mp4" controls loop muted style="height: 50%;width: 50%;"></video>
-  <div id="readout">Click video to start audio, then hover over currents...</div>
+  <h2>Hover over the Ocean Currents to Hear Them</h2>
+  <video id="vid" src="datasets/flat_global_ecco2_6840x3420_768p30-a2.mp4" controls loop muted></video>
+  <div id="readout">Loading data...</div>
+  <div id="mixer"></div>
 
   <script>
-    let audioCtx, curlOsc, divOsc, masterGain, gridData;
+    // ---------------------------------------------------------------------
+    // Config
+    // ---------------------------------------------------------------------
+    const BASE = 'http://127.0.0.1:8000';
+    const DATA_HEADER = `${BASE}/output/soundscape.json`;   // written by export_soundscape.py
+    const DATA_BIN    = `${BASE}/output/soundscape.bin`;
+
+    const TRACKS = {
+      background: `${BASE}/music/sfxmint-underwater-ambience-02.mp3`,
+      curlLow:    `${BASE}/music/low_curl.mp3`,
+      curlHigh:   `${BASE}/music/high_curl.mp3`,
+      divLow:     `${BASE}/music/low_divergence.mp3`,
+      divHigh:    `${BASE}/music/high_divergence.mp3`,
+      turbulence: `${BASE}/music/high_magnitude.mp3`,
+    };
+
+    const GLIDE = 0.3;        // seconds; how smoothly layers follow the data
+    const RADIUS = 1;         // average a (2R+1)x(2R+1) block of cells around the cursor
+    const FLOOR = 0.15;       // curl/flow never fully vanish – keeps the bed alive
+
+    // ---------------------------------------------------------------------
+    // Mixer UI
+    // ---------------------------------------------------------------------
+    const CHANNELS = [
+      { id: 'master',     name: 'Master',                 desc: 'Overall volume',                         level: 0.8 },
+      { id: 'background', name: 'Background',             desc: 'Underwater bed; dips when currents are fast', level: 0.5 },
+      { id: 'curl',       name: 'Curl · gurgle',          desc: 'Swirl amount → volume, swirl speed → low/high', level: 0.8 },
+      { id: 'flow',       name: 'Divergence · flow',      desc: 'Spreading amount → volume, speed → low/high', level: 0.7 },
+      { id: 'turb',       name: 'Magnitude · turbulence', desc: 'Current speed → volume and brightness',  level: 0.7 },
+    ];
+    const ui = {};
+    const mixerEl = document.getElementById('mixer');
+    for (const ch of CHANNELS) {
+      const el = document.createElement('div');
+      el.className = 'strip';
+      el.innerHTML = `<h4>${ch.name}</h4><small>${ch.desc}</small>
+        <input type="range" min="0" max="1" step="0.01" value="${ch.level}">
+        <div class="meter"><div></div></div><span class="val">–</span>`;
+      mixerEl.appendChild(el);
+      ui[ch.id] = { slider: el.querySelector('input'), meter: el.querySelector('.meter div'), val: el.querySelector('.val') };
+      ui[ch.id].slider.addEventListener('input', () => applyMix());
+    }
+    const level = id => parseFloat(ui[id].slider.value);
+
+    // ---------------------------------------------------------------------
+    // Data: uint8 grid [T][Y][X][5] = curl_level, curl_tone, div_level, div_tone, magnitude
+    // ---------------------------------------------------------------------
     const vid = document.getElementById('vid');
     const readout = document.getElementById('readout');
+    let header = null, grid = null;
 
-    // Load precomputed 3D FFT musical grid
-    fetch('http://127.0.0.1:8000/output/ocean_sonification.json').then(r => r.json()).then(d => gridData = d);
+    Promise.all([
+      fetch(DATA_HEADER).then(r => r.json()),
+      fetch(DATA_BIN).then(r => r.arrayBuffer()),
+    ]).then(([h, buf]) => {
+      header = h; grid = new Uint8Array(buf);
+      const [T, Y, X, F] = h.shape;
+      if (grid.length !== T * Y * X * F) throw new Error(`size mismatch: ${grid.length} vs ${T * Y * X * F}`);
+      readout.textContent = 'Click the video to start audio. Hover to listen to one spot; move off the map to hear the whole ocean.';
+    }).catch(err => readout.textContent = `Could not load soundscape data – run export_soundscape.py and the FastAPI server. (${err})`);
 
-    // Initialize Web Audio synthesizers on first user interaction
-    function initAudio() {
-      if (audioCtx) return;
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      
-      curlOsc = audioCtx.createOscillator();
-      divOsc = audioCtx.createOscillator();
-      masterGain = audioCtx.createGain();
-      
-      curlOsc.type = 'triangle'; // Warm lead tone for vortices (Curl)
-      divOsc.type = 'sine';      // Deep bass tone for expansion/compression (Divergence)
-      masterGain.gain.value = 0;
-
-      curlOsc.connect(masterGain);
-      divOsc.connect(masterGain);
-      masterGain.connect(audioCtx.destination);
-      
-      curlOsc.start();
-      divOsc.start();
+    // Each FFT window covers [t*hop, t*hop + window]; use the window centred on now.
+    function frameIndex(time) {
+      const T = header.shape[0];
+      const t = Math.floor((time - header.window_seconds / 2) / header.hop_seconds);
+      return Math.max(0, Math.min(T - 1, t));
     }
 
+    function sample(t, cx, cy) {
+      const [, Y, X, F] = header.shape, out = new Array(F).fill(0);
+      let n = 0;
+      for (let y = Math.max(0, cy - RADIUS); y <= Math.min(Y - 1, cy + RADIUS); y++)
+        for (let x = Math.max(0, cx - RADIUS); x <= Math.min(X - 1, cx + RADIUS); x++) {
+          const base = ((t * Y + y) * X + x) * F;
+          for (let f = 0; f < F; f++) out[f] += grid[base + f];
+          n++;
+        }
+      return out.map(v => v / n / 255);
+    }
+
+    // ---------------------------------------------------------------------
+    // Audio graph
+    // ---------------------------------------------------------------------
+    let ctx, nodes = {};
+    const state = { curlLevel: 0, curlTone: 0, divLevel: 0, divTone: 0, mag: 0 };
+
+    async function loadBuffer(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`${url}: ${res.status}`);
+      return ctx.decodeAudioData(await res.arrayBuffer());
+    }
+
+    // Gain that brings a recording to a common loudness, so the sliders start balanced
+    function loudnessTrim(buffer, target = 0.12) {
+      let sum = 0, n = 0;
+      for (let c = 0; c < buffer.numberOfChannels; c++) {
+        const d = buffer.getChannelData(c);
+        for (let i = 0; i < d.length; i += 16) { sum += d[i] * d[i]; n++; }
+      }
+      const rms = Math.sqrt(sum / n) || target;
+      return Math.max(0.25, Math.min(4, target / rms));
+    }
+
+    const gainNode = (v = 0) => { const g = ctx.createGain(); g.gain.value = v; return g; };
+
+    // Looping track -> trim (loudness match) -> returns the source and its output gain
+    function track(buffer, dest) {
+      const src = ctx.createBufferSource();
+      src.buffer = buffer; src.loop = true;
+      // start loops at random offsets so short clips don't line up identically
+      src.start(0, Math.random() * buffer.duration);
+      const trim = gainNode(loudnessTrim(buffer)), out = gainNode(0);
+      src.connect(trim).connect(out).connect(dest);
+      return { src, out };
+    }
+
+    async function initAudio() {
+      if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      readout.textContent = 'Loading sounds...';
+
+      nodes.master = gainNode(level('master'));
+      const comp = ctx.createDynamicsCompressor();    // stops stacked layers clipping
+      nodes.master.connect(comp).connect(ctx.destination);
+
+      const names = Object.keys(TRACKS);
+      const bufs = Object.fromEntries(
+        (await Promise.all(names.map(k => loadBuffer(TRACKS[k])))).map((b, i) => [names[i], b]));
+
+      nodes.bg = track(bufs.background, nodes.master);
+
+      nodes.curlBus = gainNode(0); nodes.curlBus.connect(nodes.master);
+      nodes.curlLow = track(bufs.curlLow, nodes.curlBus);
+      nodes.curlHigh = track(bufs.curlHigh, nodes.curlBus);
+
+      nodes.flowBus = gainNode(0); nodes.flowBus.connect(nodes.master);
+      nodes.divLow = track(bufs.divLow, nodes.flowBus);
+      nodes.divHigh = track(bufs.divHigh, nodes.flowBus);
+
+      // Turbulence goes through a low-pass: slow water = distant rumble, fast = full roar
+      nodes.turbFilter = ctx.createBiquadFilter();
+      nodes.turbFilter.type = 'lowpass'; nodes.turbFilter.frequency.value = 400;
+      nodes.turbFilter.connect(nodes.master);
+      nodes.turb = track(bufs.turbulence, nodes.turbFilter);
+
+      readout.textContent = 'Hover over the currents.';
+      applyMix();
+      requestAnimationFrame(tick);
+    }
+
+    // Push state + slider levels into the graph
+    function applyMix() {
+      if (!ctx || !nodes.turb) return;
+      const now = ctx.currentTime, set = (p, v) => p.setTargetAtTime(v, now, GLIDE);
+      const { curlLevel, curlTone, divLevel, divTone, mag } = state;
+      const xfade = (lo, hi, x) => { set(lo.out.gain, Math.cos(x * Math.PI / 2)); set(hi.out.gain, Math.sin(x * Math.PI / 2)); };
+
+      set(nodes.master.gain, level('master'));
+
+      const bg = level('background') * (1 - 0.4 * mag);
+      set(nodes.bg.out.gain, bg);
+
+      const curl = level('curl') * (FLOOR + (1 - FLOOR) * curlLevel);
+      set(nodes.curlBus.gain, curl);
+      xfade(nodes.curlLow, nodes.curlHigh, curlTone);
+      const rate = 0.9 + 0.25 * curlTone;              // faster swirls bubble faster
+      set(nodes.curlLow.src.playbackRate, rate);
+      set(nodes.curlHigh.src.playbackRate, rate);
+
+      const flow = level('flow') * (FLOOR + (1 - FLOOR) * divLevel);
+      set(nodes.flowBus.gain, flow);
+      xfade(nodes.divLow, nodes.divHigh, divTone);
+
+      const turb = level('turb') * Math.pow(mag, 1.5);
+      set(nodes.turb.out.gain, turb);
+      set(nodes.turbFilter.frequency, 300 + 9000 * mag * mag);
+
+      const pct = v => `${Math.round(v * 100)}%`;
+      showMeter('master', level('master'), pct(level('master')));
+      showMeter('background', bg, pct(bg));
+      showMeter('curl', curl, `amt ${pct(curlLevel)} · hi ${pct(curlTone)}`);
+      showMeter('flow', flow, `amt ${pct(divLevel)} · hi ${pct(divTone)}`);
+      showMeter('turb', turb, `speed ${pct(mag)}`);
+    }
+
+    function showMeter(id, v, text) {
+      ui[id].meter.style.width = `${Math.min(100, v * 100)}%`;
+      ui[id].val.textContent = text;
+    }
+
+    // ---------------------------------------------------------------------
+    // Cursor / video time → data → mix, re-sampled every animation frame
+    // ---------------------------------------------------------------------
+    let cursor = null, lastKey = '';
     vid.addEventListener('click', initAudio);
-    vid.addEventListener('mouseleave', () => {
-      if (masterGain) masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+    vid.addEventListener('mousemove', e => {
+      const r = vid.getBoundingClientRect();
+      cursor = { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
     });
+    vid.addEventListener('mouseleave', () => { cursor = null; });
 
-    vid.addEventListener('mousemove', (e) => {
-      if (!audioCtx || !gridData) return;
-      const rect = vid.getBoundingClientRect();
-      const normX = (e.clientX - rect.left) / rect.width;
-      const normY = (e.clientY - rect.top) / rect.height;
-
-      const tIdx = Math.min(Math.floor(vid.currentTime / gridData.hop_seconds), gridData.data.length - 1);
-      const gx = Math.min(Math.floor(normX * gridData.grid_x), gridData.grid_x - 1);
-      const gy = Math.min(Math.floor(normY * gridData.grid_y), gridData.grid_y - 1);
-
-      const [curlHz, divHz, vol] = gridData.data[tIdx][gy][gx];
-      const now = audioCtx.currentTime;
-
-      // Smoothly glide frequencies and volume to prevent audio clicks
-      curlOsc.frequency.setTargetAtTime(curlHz, now, 0.05);
-      divOsc.frequency.setTargetAtTime(divHz, now, 0.05);
-      masterGain.gain.setTargetAtTime(vol * 0.4, now, 0.05);
-
-      readout.textContent = `Curl (Lead): ${curlHz} Hz | Divergence (Bass): ${divHz} Hz | Flow Intensity: ${(vol * 100).toFixed(0)}%`;
-    });
+    function tick() {
+      requestAnimationFrame(tick);
+      if (!grid) return;
+      const [, Y, X] = header.shape, t = frameIndex(vid.currentTime);
+      let key, values, where;
+      if (cursor) {
+        const gx = Math.min(Math.floor(cursor.x * X), X - 1), gy = Math.min(Math.floor(cursor.y * Y), Y - 1);
+        key = `${t},${gx},${gy}`;
+        if (key !== lastKey) { values = sample(t, gx, gy); where = `cell (${gx}, ${gy})`; }
+      } else {
+        key = `ocean,${t}`;
+        if (key !== lastKey) { values = header.ocean_mean[t]; where = 'whole ocean'; }
+      }
+      if (key === lastKey) return;
+      lastKey = key;
+      const [curlLevel, curlTone, divLevel, divTone, mag] = values;
+      Object.assign(state, { curlLevel, curlTone, divLevel, divTone, mag });
+      const pct = v => `${Math.round(v * 100)}%`;
+      readout.textContent = `${where} · step ${t} · curl ${pct(curlLevel)} · divergence ${pct(divLevel)} · speed ${pct(mag)}`;
+      applyMix();
+    }
   </script>
 </body>
 </html>
