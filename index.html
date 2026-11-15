@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ocean Current Sonification</title>
+  <style>
+    body { background: #0f172a; color: #f8fafc; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
+    video { width: 640px; height: 640px; border: 2px solid #38bdf8; cursor: crosshair; }
+    #readout { margin-top: 12px; font-size: 1.1rem; color: #38bdf8; }
+  </style>
+</head>
+<body>
+  <h2>Hover over the Ocean Currents to Play Music</h2>
+  <video id="vid" src="datasets/flat_global_ecco2_6840x3420_768p30-a2.mp4" controls loop muted style="height: 50%;width: 50%;"></video>
+  <div id="readout">Click video to start audio, then hover over currents...</div>
+
+  <script>
+    let audioCtx, curlOsc, divOsc, masterGain, gridData;
+    const vid = document.getElementById('vid');
+    const readout = document.getElementById('readout');
+
+    // Load precomputed 3D FFT musical grid
+    fetch('output/ocean_sonification.json').then(r => r.json()).then(d => gridData = d);
+
+    // Initialize Web Audio synthesizers on first user interaction
+    function initAudio() {
+      if (audioCtx) return;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      
+      curlOsc = audioCtx.createOscillator();
+      divOsc = audioCtx.createOscillator();
+      masterGain = audioCtx.createGain();
+      
+      curlOsc.type = 'triangle'; // Warm lead tone for vortices (Curl)
+      divOsc.type = 'sine';      // Deep bass tone for expansion/compression (Divergence)
+      masterGain.gain.value = 0;
+
+      curlOsc.connect(masterGain);
+      divOsc.connect(masterGain);
+      masterGain.connect(audioCtx.destination);
+      
+      curlOsc.start();
+      divOsc.start();
+    }
+
+    vid.addEventListener('click', initAudio);
+    vid.addEventListener('mouseleave', () => {
+      if (masterGain) masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+    });
+
+    vid.addEventListener('mousemove', (e) => {
+      if (!audioCtx || !gridData) return;
+      const rect = vid.getBoundingClientRect();
+      const normX = (e.clientX - rect.left) / rect.width;
+      const normY = (e.clientY - rect.top) / rect.height;
+
+      const tIdx = Math.min(Math.floor(vid.currentTime / gridData.hop_seconds), gridData.data.length - 1);
+      const gx = Math.min(Math.floor(normX * gridData.grid_x), gridData.grid_x - 1);
+      const gy = Math.min(Math.floor(normY * gridData.grid_y), gridData.grid_y - 1);
+
+      const [curlHz, divHz, vol] = gridData.data[tIdx][gy][gx];
+      const now = audioCtx.currentTime;
+
+      // Smoothly glide frequencies and volume to prevent audio clicks
+      curlOsc.frequency.setTargetAtTime(curlHz, now, 0.05);
+      divOsc.frequency.setTargetAtTime(divHz, now, 0.05);
+      masterGain.gain.setTargetAtTime(vol * 0.4, now, 0.05);
+
+      readout.textContent = `Curl (Lead): ${curlHz} Hz | Divergence (Bass): ${divHz} Hz | Flow Intensity: ${(vol * 100).toFixed(0)}%`;
+    });
+  </script>
+</body>
+</html>
