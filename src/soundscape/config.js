@@ -1,19 +1,22 @@
-// Where the soundscape finds its files. These paths are served straight from the
-// project folder by `npm run dev` (Vite serves any file under the project root).
+// Where the soundscape finds its files. `npm run dev` serves them straight from the
+// project folder; `npm run build` copies them into dist/ (see vite.config.js).
+// BASE_URL is '/' locally and the repo path (e.g. '/hamtaro.jukebox.io/') on GitHub Pages.
+const BASE = import.meta.env.BASE_URL
 
-export const VIDEO_URL = '/datasets/flat_global_ecco2_6840x3420_768p30-a2.mp4'
+// Web-sized copy of the ECCO2 video (the full-quality original stays in datasets/)
+export const VIDEO_URL = `${BASE}media/ocean-currents.mp4`
 
 // Written by export_soundscape.py
-export const DATA_HEADER_URL = '/output/soundscape.json'
-export const DATA_BIN_URL = '/output/soundscape.bin'
+export const DATA_HEADER_URL = `${BASE}output/soundscape.json`
+export const DATA_BIN_URL = `${BASE}output/soundscape.bin`
 
 export const TRACKS = {
-  background: '/music/nasa-hackathon-audio-main.mp3',
-  curlLow: '/music/low_curl.mp3',
-  curlHigh: '/music/high_curl.mp3',
-  divLow: '/music/low_divergence.mp3',
-  divHigh: '/music/high_divergence.mp3',
-  turbulence: '/music/high_magnitude.mp3',
+  background: `${BASE}music/nasa-hackathon-audio-main.mp3`,
+  curlLow: `${BASE}music/low_curl.mp3`,
+  curlHigh: `${BASE}music/high_curl.mp3`,
+  divLow: `${BASE}music/low_divergence.mp3`,
+  divHigh: `${BASE}music/high_divergence.mp3`,
+  turbulence: `${BASE}music/high_magnitude.mp3`,
 }
 
 export const GLIDE = 0.3   // seconds; how smoothly layers follow the data

@@ -41,23 +41,41 @@ Hovering averages a 3 × 3 block of grid cells under the pointer. Off the video,
 | `vector_to_music.ipynb` | Vectors → curl/divergence/magnitude grids (`output/*.npz`) |
 | `export_soundscape.py` | Grids → compact data for the site (`output/soundscape.*`) |
 | `music/` | Sound recordings used by the mixer |
-| `public/image pack/` | NASA images used on the page |
-| `datasets/`, `vectors/` | Source video and vectors (large, not in git) |
+| `media/ocean-currents.mp4` | Web-sized copy of the ECCO2 video (36 MB) used by the site |
+| `vite.config.js` | Build settings; copies `media/`, `music/` and `output/soundscape.*` into the build |
+| `.github/workflows/deploy.yml` | Builds the site and publishes it to GitHub Pages on every push to `main` |
+| `datasets/`, `vectors/` | Full-quality source video and vectors (large, not in git) |
 | `archive/` | Old or unused files, kept locally only (not in git) |
 
 ## Running the site
 
 Needs [Node.js](https://nodejs.org/).
 
-1. Put the ECCO2 video at `datasets/flat_global_ecco2_6840x3420_768p30-a2.mp4`. It is too large for git.
-2. Install and start:
+1. Install and start:
    ```bash
    npm install
    npm run dev
    ```
-3. Open the address it prints, choose **Start with sound**, then hover over the video.
+2. Open the address it prints, choose **Start with sound**, then hover over the video.
 
-`npm run dev` serves the video, `music/` and `output/` straight from the project folder. A production build (`npm run build`) does not copy them, so a hosted version needs those files moved into `public/` or served elsewhere (paths are in `src/soundscape/config.js`).
+## Deploying to GitHub Pages
+
+The site is published at https://montylim.github.io/hamtaro.jukebox.io/.
+
+Every push to `main` runs `.github/workflows/deploy.yml`, which builds the site and publishes it. You can also run it by hand from the repository's **Actions** tab. One-time setup: in the repository's **Settings → Pages**, set **Source** to **GitHub Actions**.
+
+To check a production build locally before pushing:
+
+```bash
+npm run build
+npx vite preview
+```
+
+If you replace the video, keep it well under GitHub's 100 MB file limit. This is how `media/ocean-currents.mp4` was made from the original:
+
+```bash
+ffmpeg -i datasets/flat_global_ecco2_6840x3420_768p30-a2.mp4 -an -c:v libx264 -preset slow -crf 33 -pix_fmt yuv420p -movflags +faststart media/ocean-currents.mp4
+```
 
 ## Rebuilding the data
 
@@ -75,7 +93,6 @@ To change a sound, replace the file in `music/` or update the path in `src/sound
 ## Credits
 
 - Ocean visualization: NASA Scientific Visualization Studio, ECCO2 / MITgcm
-- Page images: NASA (individual credits are shown in the site footer)
 - Background track: made by the team (`music/nasa-hackathon-audio-main.mp3`, a stereo mix of the original 5.1 WAV)
 - Check the license of each sound in `music/` before publishing
 
