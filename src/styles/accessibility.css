@@ -1,0 +1,68 @@
+
+:root {
+  --background: #FFFFFF;
+  --text: #171717;
+  --surface: #EEEEEE;
+  --accent: #004C99;
+  --section-seam: #F2F0DC;
+}
+
+/* dark theme */
+[data-theme="dark"] {
+  --background: #121212;
+  --text: #FFFFFF;
+  --surface: #242424;
+  --accent: #90CAF9;
+  --section-seam: #121212;
+}
+
+[data-theme="dark"] .top-header {
+  background-color: #101010;
+}
+
+[data-theme="light"] .top-header {
+  background-color: #202B3A;
+}
+
+/* Keep the selectable text sizes readable while allowing browser zoom. */
+html {
+  font-size: 18px;
+}
+
+html[data-text-size="small"] {
+  font-size: 16px;
+}
+
+html[data-text-size="normal"] {
+  font-size: 18px;
+}
+
+html[data-text-size="large"] {
+  font-size: 22px;
+}
+
+body {
+  margin: 0;
+  background-color: var(--background);
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.5;
+  font-family: Arial, sans-serif;
+}
+
+/* keyboard focus - for blind/low-vision users */
+*:focus-visible {
+  outline: 4px solid #FFFF00;
+  outline-offset: 4px;
+}
+
+/* reduced motion preference - for blind/low-vision users */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

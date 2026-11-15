@@ -225,3 +225,9 @@ datasets/
 vectors/
 .ipynb_checkpoints/
 .claude/
+
+# Node / Vite
+node_modules/
+
+# Archived files kept locally, not in git
+archive/
